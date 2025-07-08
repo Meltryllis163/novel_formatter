@@ -1,6 +1,6 @@
 # novel_formatter
 
-`novel_formatter`是一个用于小说格式化的Dart包，自用于`novel_formatter_ui`程序（开发中）。
+`novel_formatter`是一个用于小说格式化的Dart工具。
 
 ## 安装
 
@@ -28,14 +28,15 @@ void format() async {
 
   // 导出文件的配置项
   ExportOptions exportOptions = ExportOptions(
-    'ExportFilePath.txt',
-    chapterTemplate: TitleTemplate(
-      // 占位符详见[TitleTemplate]类。
-      '第${TitleTemplate.num}章 ${TitleTemplate.name}',
-    ),
-    paragraphIndentation: Indentation(2, '\u3000'),
+      'ExportFilePath.txt',
+      chapterTemplate: TitleTemplate(
+        // 占位符详见[TitleTemplate]类。
+        '第${TitleTemplate.num}章 ${TitleTemplate.name}',
+      ),
+      paragraphIndentation: Indentation(2, '\u3000'),
+      replcements: [Replacement(true, r'正则表达式', '替换字符串')]
   );
-  
+
   FormatProcessor processor = FormatProcessor(importOptions, exportOptions);
   await processor.format();
 }
