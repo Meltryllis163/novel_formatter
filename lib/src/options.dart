@@ -3,8 +3,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:chinese_number/chinese_number.dart';
+import 'package:novel_formatter/novel_formatter.dart';
 
-import 'novel.dart';
 import 'utils.dart';
 
 /// 小说导入配置项。
@@ -52,16 +52,24 @@ class ExportOptions {
 
   /// 导出小说编码。
   final Encoding encoding;
+
   /// 导出卷格式模板。
   final TitleTemplate? volumeTemplate;
+
   /// 导出章节格式模板。
   final TitleTemplate? chapterTemplate;
+
   /// 卷缩进格式。
   final Indentation? volumeIndentation;
+
   /// 章节缩进格式。
   final Indentation? chapterIndentation;
+
   /// 段落缩进格式。
   final Indentation? paragraphIndentation;
+
+  /// 文本替换列表。
+  final List<Replacement> replcements;
 
   ExportOptions(
     String filePath, {
@@ -70,6 +78,7 @@ class ExportOptions {
     this.volumeIndentation,
     this.chapterIndentation,
     this.paragraphIndentation,
+    this.replcements = const [],
     this.encoding = utf8,
   }) : file = File(filePath);
 
@@ -93,6 +102,10 @@ class Indentation {
   Indentation(int spaceCount, this.chars) : count = max(0, spaceCount);
 
   Indentation.defaultChineseIndentationOptions() : count = 2, chars = '\u3000';
+
+  String applyTo(String input) {
+    return '${StrUtil.repeat(chars, count - 1)}$input';
+  }
 
   @override
   String toString() {
@@ -122,9 +135,9 @@ class TitleTemplate {
     return template
         .replaceAll(
           TitleTemplate.cnum,
-          (title.num ?? 0).toSimplifiedChineseNumber(),
+          (title.number ?? 0).toSimplifiedChineseNumber(),
         )
-        .replaceAll(TitleTemplate.num, title.num.toString())
+        .replaceAll(TitleTemplate.num, title.number.toString())
         .replaceAll(TitleTemplate.name, title.name ?? StrUtil.empty);
   }
 

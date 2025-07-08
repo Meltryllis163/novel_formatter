@@ -21,8 +21,8 @@ class FormatProcessor {
   late BlankLineParser blankLineParser;
   late TitleParser volumeParser;
   late TitleParser chapterParser;
-  late TitleFormatter volumeFormatter;
-  late TitleFormatter chapterFormatter;
+  late VolumeFormatter volumeFormatter;
+  late ChapterFormatter chapterFormatter;
   late ParagraphFormatter paragraphFormatter;
 
   /// 初始化解析器和格式化器。
@@ -30,22 +30,24 @@ class FormatProcessor {
     blankLineParser = BlankLineParser();
     volumeParser = TitleParser(importOptions.volumeImportOptions);
     chapterParser = TitleParser(importOptions.chapterImportOptions);
-    volumeFormatter = TitleFormatter(
-      exportOptions.volumeTemplate,
+
+    volumeFormatter = VolumeFormatter(
+      template: exportOptions.volumeTemplate,
       indentation: exportOptions.volumeIndentation,
+      replacements: exportOptions.replcements,
     );
-    chapterFormatter = TitleFormatter(
-      exportOptions.chapterTemplate,
+    chapterFormatter = ChapterFormatter(
+      template: exportOptions.chapterTemplate,
       indentation: exportOptions.chapterIndentation,
+      replacements: exportOptions.replcements,
     );
     paragraphFormatter = ParagraphFormatter(
       indentation: exportOptions.paragraphIndentation,
+      replacements: exportOptions.replcements,
     );
   }
 
   /// 格式化小说。
-  ///
-  /// 返回值表示格式化的结果：[fileNotFound]、[formatSuccess]
   Future<FormatResult> format() async {
     FormatResult result = FormatResult();
     final File file = importOptions.file;
@@ -74,6 +76,7 @@ class FormatProcessor {
         if (blankLine != null) {
           continue;
         }
+        // 卷判断与格式化
         Title? volume = volumeParser.tryParse(text);
         if (volume != null) {
           String formatVolume = volumeFormatter.format(volume);
@@ -81,6 +84,7 @@ class FormatProcessor {
           sink.writeln(formatVolume);
           continue;
         }
+        // 章节判断与格式化
         Title? chapter = chapterParser.tryParse(text);
         if (chapter != null) {
           String formattedChapter = chapterFormatter.format(chapter);
@@ -88,6 +92,7 @@ class FormatProcessor {
           sink.writeln(formattedChapter);
           continue;
         }
+        // 段落格式化
         sink.writeln(paragraphFormatter.format(Paragraph(text)));
       }
       sink.close();
@@ -127,11 +132,39 @@ class FormatResult {
 
 abstract class AbstractNovelElementFormatter<T extends NovelElement> {
   final Indentation? indentation;
+  final List<Replacement> replacements;
 
-  AbstractNovelElementFormatter({this.indentation});
+  AbstractNovelElementFormatter({
+    this.indentation,
+    this.replacements = const [],
+  });
 
-  String format(T input);
+  /// 根据不同格式器的规则，各自解析[T]来获取用于后续通用格式化流程的文本。
+  String resolveText(T element);
 
+  /// 格式化当前[NovelElement]文本。
+  String format(T element) {
+    String text = resolveText(element);
+    String replaced = replace(text);
+    return indent(replaced);
+  }
+
+  /// 判断当前格式器是否允许[replacement]替换规则。
+  bool acceptReplacement(Replacement replacement);
+
+  /// 对[input]字符串应用[replacements]替换规则。
+  String replace(String input) {
+    String replaced = input;
+    for (Replacement r in replacements) {
+      if (acceptReplacement(r)) {
+        replaced = r.applyTo(replaced);
+      }
+    }
+    return replaced;
+  }
+
+  /// 对[input]字符串添加[indentation]缩进。
+  /// 当[indentation]为`null`时返回原字符串。
   String indent(String input) {
     if (indentation == null) {
       return input;
@@ -140,23 +173,93 @@ abstract class AbstractNovelElementFormatter<T extends NovelElement> {
   }
 }
 
-class TitleFormatter extends AbstractNovelElementFormatter<Title> {
+abstract class AbstractTitleFormatter
+    extends AbstractNovelElementFormatter<Title> {
   final TitleTemplate? template;
 
-  TitleFormatter(this.template, {required super.indentation});
+  AbstractTitleFormatter({
+    required this.template,
+    super.indentation,
+    super.replacements,
+  });
 
   @override
-  String format(Title title) {
-    String templateText = template == null ? title.text : template!.fill(title);
-    return indent(templateText);
+  String resolveText(Title title) {
+    if (template == null) {
+      return title.text;
+    }
+    return template!.fill(title);
+  }
+}
+
+class VolumeFormatter extends AbstractTitleFormatter {
+  VolumeFormatter({
+    required super.template,
+    super.indentation,
+    super.replacements,
+  });
+
+  @override
+  bool acceptReplacement(Replacement replacement) {
+    return replacement.applyToVolume;
+  }
+}
+
+class ChapterFormatter extends AbstractTitleFormatter {
+  ChapterFormatter({
+    required super.template,
+    super.indentation,
+    super.replacements,
+  });
+
+  @override
+  bool acceptReplacement(Replacement replacement) {
+    return replacement.applyToVolume;
   }
 }
 
 class ParagraphFormatter extends AbstractNovelElementFormatter<Paragraph> {
-  ParagraphFormatter({super.indentation});
+  ParagraphFormatter({super.indentation, super.replacements});
 
   @override
-  String format(Paragraph input) {
-    return indent(input.text);
+  bool acceptReplacement(Replacement replacement) {
+    return replacement.applyToParagraph;
+  }
+
+  @override
+  String resolveText(Paragraph paragraph) {
+    return paragraph.text;
+  }
+}
+
+/// 替换规则，用于小说文本的批量替换。
+class Replacement {
+  final String from;
+  final String to;
+
+  /// [from]是否为正则字符串。
+  final bool isRegExp;
+
+  /// 是否对卷有效。
+  final bool applyToVolume;
+
+  /// 是否对章节有效。
+  final bool applyToChapter;
+
+  /// 是否对段落有效。
+  final bool applyToParagraph;
+
+  Replacement(
+    this.isRegExp,
+    this.from,
+    this.to, {
+    this.applyToVolume = true,
+    this.applyToChapter = true,
+    this.applyToParagraph = true,
+  });
+
+  /// 将当前替换规则应用到[input]。
+  String applyTo(String input) {
+    return input.replaceAll(isRegExp ? RegExp(from) : from, to);
   }
 }
