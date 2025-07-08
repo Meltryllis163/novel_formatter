@@ -3,10 +3,7 @@ import 'utils.dart';
 /// 小说中的各个部分。
 /// 包括标题[Title]、正文段落[Paragraph]以及空行[BlankLine]。
 abstract class NovelElement {
-  /// 小说元素行的文本。
-  ///
-  /// 该文本最好先经过[String.trim]方法移除前后置空格。
-  /// `null`对象请转换为`''`传入。
+  /// 当前部分对应的文本。
   final String text;
 
   const NovelElement(this.text);
@@ -20,12 +17,12 @@ class BlankLine extends NovelElement {
 /// 小说标题，例如卷标题和章节标题。
 class Title extends NovelElement {
   /// 标题编号。
-  final int? num;
+  final int? number;
 
-  /// 标题名称
+  /// 标题名称。
   final String? name;
 
-  const Title(super.text, this.num, this.name);
+  const Title(super.text, this.number, this.name);
 }
 
 /// 小说正文段落。
