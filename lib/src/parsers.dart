@@ -32,10 +32,16 @@ class TitleParser extends AbstractParser {
     for (RegExp regex in options.regexes) {
       RegExpMatch? match = regex.firstMatch(input);
       if (match != null) {
+        String? numGroupStr = match.groupNames.contains(numGroup)
+            ? match.namedGroup(numGroup)
+            : null;
+        String? nameGroupStr = match.groupNames.contains(nameGroup)
+            ? match.namedGroup(nameGroup)
+            : null;
         return Title(
           input,
-          NumberUtil.tryParse(match.namedGroup(numGroup))?.toInt() ?? 0,
-          match.namedGroup(nameGroup),
+          NumberUtil.tryParse(numGroupStr)?.toInt(),
+          nameGroupStr,
         );
       }
     }
@@ -48,12 +54,14 @@ class TitleRegExp {
   // 卷正则 ==============================================
   /// 第一卷 卷名；
   /// 第1卷 卷名。
-  static const String volume1 =
-      '^第(?<${TitleParser.numGroup}>[0-9一二三四五六七八九零十百千万]+)卷[\\s]*(?<${TitleParser.nameGroup}>[\\S]*)\$';
+  static final RegExp volume1 = RegExp(
+    '^第(?<${TitleParser.numGroup}>[0-9一二三四五六七八九零十百千万]+)卷[\\s]*(?<${TitleParser.nameGroup}>[\\S]*)\$',
+  );
 
   // 章节正则 ==============================================
   /// 第一章 章节名；
   /// 第1章 章节名。
-  static const String chapter1 =
-      '^第(?<${TitleParser.numGroup}>[0-9一二三四五六七八九零十百千万]+)章[\\s]*(?<${TitleParser.nameGroup}>[\\S]*)\$';
+  static final RegExp chapter1 = RegExp(
+    '^第(?<${TitleParser.numGroup}>[0-9一二三四五六七八九零十百千万]+)章[\\s]*(?<${TitleParser.nameGroup}>[\\S]*)\$',
+  );
 }

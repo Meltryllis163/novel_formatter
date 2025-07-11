@@ -1,10 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 
-import 'novel.dart';
-import 'options.dart';
-import 'parsers.dart';
-import 'utils.dart';
+import 'package:novel_formatter/novel_formatter.dart';
 
 /// 小说格式化处理器。
 ///
@@ -18,112 +14,103 @@ class FormatProcessor {
 
   FormatProcessor(this.importOptions, this.exportOptions);
 
+  late AbstractInput input;
+  late AbstractOutput output;
   late BlankLineParser blankLineParser;
   late TitleParser volumeParser;
   late TitleParser chapterParser;
+
+  late BriefFormatter briefFormatter;
   late VolumeFormatter volumeFormatter;
   late ChapterFormatter chapterFormatter;
   late ParagraphFormatter paragraphFormatter;
 
   /// 初始化解析器和格式化器。
   void initialize() {
+    input = importOptions.input;
+    output = exportOptions.output;
+
     blankLineParser = BlankLineParser();
     volumeParser = TitleParser(importOptions.volumeImportOptions);
     chapterParser = TitleParser(importOptions.chapterImportOptions);
 
+    briefFormatter = BriefFormatter(
+      indentation: exportOptions.briefIndentation,
+      replacements: exportOptions.replacements,
+    );
     volumeFormatter = VolumeFormatter(
       template: exportOptions.volumeTemplate,
       indentation: exportOptions.volumeIndentation,
-      replacements: exportOptions.replcements,
+      replacements: exportOptions.replacements,
     );
     chapterFormatter = ChapterFormatter(
       template: exportOptions.chapterTemplate,
       indentation: exportOptions.chapterIndentation,
-      replacements: exportOptions.replcements,
+      replacements: exportOptions.replacements,
     );
     paragraphFormatter = ParagraphFormatter(
       indentation: exportOptions.paragraphIndentation,
-      replacements: exportOptions.replcements,
+      replacements: exportOptions.replacements,
     );
   }
 
   /// 格式化小说。
   Future<FormatResult> format() async {
     FormatResult result = FormatResult();
-    final File file = importOptions.file;
-    if (!file.existsSync()) {
-      result.setStatus = FormatResultStatus.fileNotFound;
-      return result;
-    }
-    Stream<List<int>> inputStream = file.openRead();
-    Stream<String> lines = importOptions.encoding.decoder
-        .bind(inputStream)
-        .transform(const LineSplitter());
+    initialize();
     try {
-      final File exportFile = exportOptions.file;
-      // 新建或清空导出文档。
-      if (exportFile.existsSync()) {
-        FileUtil.clear(exportFile);
-      } else {
-        exportFile.createSync();
-      }
-      initialize();
-      IOSink sink = exportFile.openWrite(mode: FileMode.append);
-      await for (final String line in lines) {
+      await input.initialize();
+      await output.initialize();
+      await input.traverse((String line) {
         String text = line.trim();
-        // 空行判断
-        BlankLine? blankLine = blankLineParser.tryParse(text);
-        if (blankLine != null) {
-          continue;
+        if (blankLineParser.tryParse(text) != null) {
+          return;
         }
-        // 卷判断与格式化
-        Title? volume = volumeParser.tryParse(text);
-        if (volume != null) {
-          String formatVolume = volumeFormatter.format(volume);
+        Title? volume, chapter;
+        String formatText = text;
+        // 解析与格式化
+        if ((volume = volumeParser.tryParse(text)) != null) {
+          formatText = volumeFormatter.format(volume!);
           result.volumeCount++;
-          sink.writeln(formatVolume);
-          continue;
-        }
-        // 章节判断与格式化
-        Title? chapter = chapterParser.tryParse(text);
-        if (chapter != null) {
-          String formattedChapter = chapterFormatter.format(chapter);
+        } else if ((chapter = chapterParser.tryParse(text)) != null) {
+          formatText = chapterFormatter.format(chapter!);
           result.chapterCount++;
-          sink.writeln(formattedChapter);
-          continue;
+        } else if (importOptions.hasBrief &&
+            result.volumeCount == 0 &&
+            result.chapterCount == 0) {
+          // 如果当前文本既不是卷也不是行
+          // 而且：当前小说有简介 && 当前未检测到卷 && 当前未检测到章节
+          // 则认为当前文本为简介
+          formatText = briefFormatter.format(Brief(text));
+        } else {
+          formatText = paragraphFormatter.format(Paragraph(text));
         }
-        // 段落格式化
-        sink.writeln(paragraphFormatter.format(Paragraph(text)));
-      }
-      sink.close();
-      result.setStatus = FormatResultStatus.success;
+        // 输出格式化文本。
+        output.output(formatText + Platform.lineTerminator);
+        // 输出空行。
+        for (int i = 0; i < exportOptions.blankLineCount; i++) {
+          output.output(Platform.lineTerminator);
+        }
+      });
+      await input.destroy();
+      await output.destroy();
+      print('FormatSuccess');
       return result;
     } catch (e) {
-      result.setStatus = FormatResultStatus.fail;
+      print('Format Failed. $e');
+      result.fail(e);
       return result;
     }
   }
 }
 
-enum FormatResultStatus {
-  /// 未定义，说明未开启格式化流程。
-  undefined,
-
-  /// 文件不存在，未读取到需要格式化的文件。
-  fileNotFound,
-
-  /// 格式化完成。
-  success,
-
-  /// 格式化失败。
-  fail,
-}
-
 class FormatResult {
-  FormatResultStatus status = FormatResultStatus.undefined;
+  late bool success = true;
+  late Object? exception;
 
-  set setStatus(FormatResultStatus status) {
-    this.status = status;
+  void fail(Object e) {
+    success = false;
+    exception = e;
   }
 
   int volumeCount = 0;
@@ -166,23 +153,23 @@ abstract class AbstractNovelElementFormatter<T extends NovelElement> {
   /// 对[input]字符串添加[indentation]缩进。
   /// 当[indentation]为`null`时返回原字符串。
   String indent(String input) {
-    if (indentation == null) {
-      return input;
-    }
-    return '${StrUtil.repeat(indentation!.chars, indentation!.count - 1)}$input';
+    return indentation == null ? input : indentation!.applyTo(input);
   }
 }
 
 abstract class AbstractTitleFormatter
     extends AbstractNovelElementFormatter<Title> {
+  /// 标题模板。
   final TitleTemplate? template;
 
   AbstractTitleFormatter({
-    required this.template,
+    this.template,
     super.indentation,
     super.replacements,
   });
 
+  /// 使用[template]模板解析[Title]标题。
+  /// 如果[template]为`null`则直接返回标题文本。
   @override
   String resolveText(Title title) {
     if (template == null) {
@@ -232,6 +219,20 @@ class ParagraphFormatter extends AbstractNovelElementFormatter<Paragraph> {
   }
 }
 
+class BriefFormatter extends AbstractNovelElementFormatter<Brief> {
+  BriefFormatter({super.indentation, super.replacements});
+
+  @override
+  bool acceptReplacement(Replacement replacement) {
+    return replacement.applyToBrief;
+  }
+
+  @override
+  String resolveText(Brief element) {
+    return element.text;
+  }
+}
+
 /// 替换规则，用于小说文本的批量替换。
 class Replacement {
   final String from;
@@ -239,6 +240,9 @@ class Replacement {
 
   /// [from]是否为正则字符串。
   final bool isRegExp;
+
+  /// 是否对简介有效。
+  final bool applyToBrief;
 
   /// 是否对卷有效。
   final bool applyToVolume;
@@ -253,6 +257,7 @@ class Replacement {
     this.isRegExp,
     this.from,
     this.to, {
+    this.applyToBrief = true,
     this.applyToVolume = true,
     this.applyToChapter = true,
     this.applyToParagraph = true,
