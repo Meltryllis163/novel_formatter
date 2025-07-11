@@ -1,5 +1,5 @@
 name: novel_formatter
-description: A dart tool to format novels.
+description: A dart package to format novels.
 version: 0.0.2
 repository: https://github.com/Meltryllis163/novel_formatter
 
