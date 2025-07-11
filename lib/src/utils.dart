@@ -45,12 +45,8 @@ class FileUtil {
     if (file == null || !file.existsSync()) {
       return false;
     }
-    try {
-      file.writeAsStringSync(StrUtil.empty);
-      return true;
-    } catch (e) {
-      return false;
-    }
+    file.writeAsStringSync(StrUtil.empty);
+    return true;
   }
 
   /// 如果文件不存在，则创建文件。

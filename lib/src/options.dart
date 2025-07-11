@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:chinese_number/chinese_number.dart';
@@ -9,11 +7,11 @@ import 'utils.dart';
 
 /// 小说导入配置项。
 class ImportOptions {
-  /// 小说文件。
-  final File file;
+  /// 小说读取器。
+  final AbstractInput input;
 
-  /// 小说编码，默认为[utf8]。
-  final Encoding encoding;
+  /// 是否有简介。
+  final bool hasBrief;
 
   /// 卷导入配置项。
   final TitleImportOptions volumeImportOptions;
@@ -22,11 +20,16 @@ class ImportOptions {
   final TitleImportOptions chapterImportOptions;
 
   ImportOptions(
-    String filePath, {
+    this.input, {
     required this.volumeImportOptions,
     required this.chapterImportOptions,
-    this.encoding = utf8,
-  }) : file = File(filePath);
+    this.hasBrief = false,
+  });
+
+  @override
+  String toString() {
+    return 'ImportOptions{input: $input, volumeImportOptions: $volumeImportOptions, chapterImportOptions: $chapterImportOptions}';
+  }
 }
 
 /// 标题导入配置项。
@@ -47,17 +50,17 @@ class TitleImportOptions {
 
 /// 小说导出配置项。
 class ExportOptions {
-  /// 导出小说位置。
-  final File file;
-
-  /// 导出小说编码。
-  final Encoding encoding;
+  /// 小说导出器。
+  final AbstractOutput output;
 
   /// 导出卷格式模板。
   final TitleTemplate? volumeTemplate;
 
   /// 导出章节格式模板。
   final TitleTemplate? chapterTemplate;
+
+  /// 简介缩进格式。
+  final Indentation? briefIndentation;
 
   /// 卷缩进格式。
   final Indentation? volumeIndentation;
@@ -68,24 +71,27 @@ class ExportOptions {
   /// 段落缩进格式。
   final Indentation? paragraphIndentation;
 
+  /// 段落之间空行数量。
+  final int blankLineCount;
+
   /// 文本替换列表。
-  final List<Replacement> replcements;
+  final List<Replacement> replacements;
 
   ExportOptions(
-    String filePath, {
+    this.output, {
     this.volumeTemplate,
     this.chapterTemplate,
+    this.briefIndentation,
     this.volumeIndentation,
     this.chapterIndentation,
     this.paragraphIndentation,
-    this.replcements = const [],
-    this.encoding = utf8,
-  }) : file = File(filePath);
+    this.blankLineCount = 0,
+    this.replacements = const [],
+  });
 
   @override
   String toString() {
-    return 'ExportOptions: { $encoding, volume$volumeTemplate, chapter$chapterTemplate, volumeIndentation: $volumeIndentation,'
-        ' chapterIndentation: $chapterIndentation, paragraphIndentation: $paragraphIndentation }';
+    return 'ExportOptions{output: $output, volumeTemplate: $volumeTemplate, chapterTemplate: $chapterTemplate, volumeIndentation: $volumeIndentation, chapterIndentation: $chapterIndentation, paragraphIndentation: $paragraphIndentation, replcements: $replacements}';
   }
 }
 
@@ -109,7 +115,7 @@ class Indentation {
 
   @override
   String toString() {
-    return 'Indentation:{ count: $count, chars: "$chars" }';
+    return 'Indentation{chars: $chars, count: $count}';
   }
 }
 
@@ -143,6 +149,6 @@ class TitleTemplate {
 
   @override
   String toString() {
-    return 'TitleTemplate:{ "$template" }';
+    return 'TitleTemplate{template: $template}';
   }
 }

@@ -14,6 +14,13 @@ class BlankLine extends NovelElement {
   const BlankLine() : super(StrUtil.empty);
 }
 
+/// 小说简介。
+/// 通常在第一章开始之前，可能会存在一些小说元数据。
+/// 比如小说名、作者、下载地址、简介等等内容，这些内容统一定义为小说简介。
+class Brief extends NovelElement {
+  Brief(super.text);
+}
+
 /// 小说标题，例如卷标题和章节标题。
 class Title extends NovelElement {
   /// 标题编号。
