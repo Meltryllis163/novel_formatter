@@ -17,14 +17,14 @@
 **样例：**
 
 ```
-《万相之王》 //Brief
-作者：天蚕土豆 //Brief
-第一卷 卷名 //Volume
-第一章 我有三个相宫 //Chapter
-　　大夏国，天蜀郡。 //Paragraph
-　　六月的南风城，骄阳似火，炙烤大地。 //Paragraph
-　　南风中等学府。 //Paragraph
-　　宽敞明亮的训练场。 //Paragraph
+《诡秘之主》 //Brief
+作者：爱潜水的乌贼 //Brief
+第一部 小丑 //Volume
+第一章 绯红 //Chapter
+　　痛！ //Paragraph
+　　好痛！ //Paragraph
+　　头好痛! //Paragraph
+　　光怪陆离满是低语的梦境迅速支离破碎，熟睡中的周明瑞只觉脑袋抽痛异常，仿佛被人用棒子狠狠抢了一下，不，更像是遭尖锐的物品刺入太阳穴并伴随有搅动！ //Paragraph
 ```
 
 ## 导入依赖
