@@ -1,7 +1,7 @@
 import 'utils.dart';
 
 /// 小说中的各个部分。
-/// 包括标题[Title]、正文段落[Paragraph]以及空行[BlankLine]。
+/// 包括简介[Brief]、标题[Title]、正文段落[Paragraph]以及空行[BlankLine]。
 abstract class NovelElement {
   /// 当前部分对应的文本。
   final String text;
