@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:novel_formatter/novel_formatter.dart';
 
+import 'logger.dart';
+
 /// 小说格式化处理器。
 ///
 /// 此类负责小说的整个格式化流程，包括：读取、格式化、导出。
@@ -59,12 +61,13 @@ class FormatProcessor {
     FormatResult result = FormatResult();
     initialize();
     try {
-      await input.initialize();
-      await output.initialize();
-      await input.traverse((String line) {
+      input.initialize();
+      output.initialize();
+      Stream<String> lines = input.stream;
+      await for (String line in lines) {
         String text = line.trim();
         if (blankLineParser.tryParse(text) != null) {
-          return;
+          continue;
         }
         Title? volume, chapter;
         String formatText = text;
@@ -91,13 +94,14 @@ class FormatProcessor {
         for (int i = 0; i < exportOptions.blankLineCount; i++) {
           output.output(Platform.lineTerminator);
         }
-      });
-      await input.destroy();
-      await output.destroy();
-      print('FormatSuccess');
+      }
+      ;
+      input.destroy();
+      output.destroy();
+      logger.i('Format success.');
       return result;
     } catch (e) {
-      print('Format Failed. $e');
+      logger.d('Format failed. Exception: $e');
       result.fail(e);
       return result;
     }
