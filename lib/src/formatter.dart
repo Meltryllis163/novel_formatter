@@ -21,6 +21,7 @@ class FormatProcessor {
   late final BlankLineParser _blankLineParser;
   late final VolumeParser _volumeParser;
   late final ChapterParser _chapterParser;
+  late final ParagraphParser _paragraphParser;
 
   late final BriefFormatter _briefFormatter;
   late final VolumeFormatter _volumeFormatter;
@@ -49,6 +50,7 @@ class FormatProcessor {
     _volumeParser = VolumeParser(_importOptions.volumeImportOptions);
     _chapterParser = ChapterParser(_importOptions.chapterImportOptions);
     _briefParser = BriefParser(_importOptions, _formatResult);
+    _paragraphParser = ParagraphParser(_importOptions.paragraphImportOptions);
   }
 
   /// 初始化格式化器。
@@ -88,6 +90,8 @@ class FormatProcessor {
         String? outputText = _formatNovelElement(element);
         _outputFormatText(outputText);
       }
+      // 处理剩余段落文本。
+      _flushPendingParagraph();
       _input.destroy();
       _output.destroy();
       logger.i('Format success.');
@@ -104,7 +108,7 @@ class FormatProcessor {
         _volumeParser.tryParse(text) ??
         _chapterParser.tryParse(text) ??
         _briefParser.tryParse(text) ??
-        Paragraph(text);
+        _paragraphParser.tryParse(text);
   }
 
   void _countNovelElement(NovelElement? element) {
@@ -142,6 +146,17 @@ class FormatProcessor {
     }
     _output.output(lineTerminator * blankLineCount);
   }
+
+  /// 输出[_paragraphParser]中的剩余文本。
+  void _flushPendingParagraph() {
+    String text = _paragraphParser.getBufferString();
+    if (text.isEmpty) {
+      return;
+    }
+    Paragraph paragraph = Paragraph(text);
+    String formatParagraph = _paragraphFormatter.format(paragraph);
+    _outputFormatText(formatParagraph);
+  }
 }
 
 class FormatResult {
@@ -172,13 +187,13 @@ abstract class AbstractNovelElementFormatter<T extends NovelElement> {
   });
 
   /// 根据不同格式器的规则，各自解析[T]来获取用于后续通用格式化流程的文本。
-  String _resolveText(T brief);
+  String _resolveText(T element);
 
   /// 格式化[T]，返回格式化字符串。
   String format(T element) {
     String text = _resolveText(element);
     String replaced = _replace(text);
-    return indent(replaced);
+    return _indent(replaced);
   }
 
   /// 判断当前格式器是否允许[replacement]替换规则。
@@ -197,7 +212,7 @@ abstract class AbstractNovelElementFormatter<T extends NovelElement> {
 
   /// 对[input]字符串添加[indentation]缩进。
   /// 当[indentation]为`null`时返回原字符串。
-  String indent(String input) {
+  String _indent(String input) {
     return indentation == null ? input : indentation!.applyTo(input);
   }
 }
@@ -225,8 +240,7 @@ abstract class AbstractTitleFormatter
   /// 使用[template]模板解析[Title]标题。
   /// 如果[template]为`null`则直接返回标题文本。
   @override
-  String _resolveText(Title brief) {
-    Title title = brief;
+  String _resolveText(Title title) {
     if (template == null) {
       return title.text;
     }
@@ -267,8 +281,8 @@ class ParagraphFormatter extends AbstractNovelElementFormatter<Paragraph> {
   }
 
   @override
-  String _resolveText(Paragraph brief) {
-    return brief.text;
+  String _resolveText(Paragraph paragraph) {
+    return paragraph.text;
   }
 }
 
