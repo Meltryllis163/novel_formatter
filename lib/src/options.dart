@@ -1,6 +1,6 @@
 import 'package:chinese_number/chinese_number.dart';
-import 'package:novel_formatter/novel_formatter.dart';
 
+import '../novel_formatter.dart';
 import 'utils.dart';
 
 /// 小说导入配置项。
@@ -17,16 +17,20 @@ class ImportOptions {
   /// 「章节」导入配置项。
   final TitleImportOptions chapterImportOptions;
 
+  /// 「段落」导入配置项。
+  final ParagraphImportOptions paragraphImportOptions;
+
   const ImportOptions(
     this.input, {
     this.volumeImportOptions = const TitleImportOptions(),
     this.chapterImportOptions = const TitleImportOptions(),
+    this.paragraphImportOptions = const ParagraphImportOptions(),
     this.hasBrief = false,
   });
 
   @override
   String toString() {
-    return 'ImportOptions{input: $input, hasBrief: $hasBrief, volumeImportOptions: $volumeImportOptions, chapterImportOptions: $chapterImportOptions}';
+    return 'ImportOptions{input: $input, hasBrief: $hasBrief, volumeImportOptions: $volumeImportOptions, chapterImportOptions: $chapterImportOptions, paragraphImportOptions: $paragraphImportOptions}';
   }
 }
 
@@ -46,6 +50,16 @@ class TitleImportOptions {
   String toString() {
     return 'TitleImportOptions:{ maxLength: $maxLength, regexes: $regexes }';
   }
+}
+
+class ParagraphImportOptions {
+  /// 是否重新分段。
+  final bool resegment;
+
+  /// 段落最大长度，超出该长度的文本将不会再重新分段，而是作为完整段落输出。
+  final int maxLength;
+
+  const ParagraphImportOptions({this.resegment = false, this.maxLength = 500});
 }
 
 /// 小说导出配置项。
