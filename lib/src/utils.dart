@@ -6,22 +6,13 @@ class StrUtil {
   /// 空字符串。
   static const String empty = '';
 
-  /// 重复[str]字符串[count]次。
-  ///
-  /// 如果字符串为[null]或者[isEmpty]，则返回[empty]。
-  /// 如果[count]为0，则返回原字符串。
-  static String repeat(String? str, int count) {
+  /// 返回字符串的最后一个字符。
+  /// 不存在则返回[empty]。
+  static String getLastCharacter(String? str) {
     if (str == null || str.isEmpty) {
       return empty;
     }
-    if (count <= 0) {
-      return str;
-    }
-    StringBuffer buffer = StringBuffer(str);
-    for (int i = 0; i < count; i++) {
-      buffer.write(str);
-    }
-    return buffer.toString();
+    return str[str.length - 1];
   }
 }
 

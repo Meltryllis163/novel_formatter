@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:chinese_number/chinese_number.dart';
 import 'package:novel_formatter/novel_formatter.dart';
 
@@ -10,37 +8,39 @@ class ImportOptions {
   /// 小说读取器。
   final AbstractInput input;
 
-  /// 是否有简介。
+  /// 是否有「简介」。
   final bool hasBrief;
 
-  /// 卷导入配置项。
+  /// 「卷」导入配置项。
   final TitleImportOptions volumeImportOptions;
 
-  /// 章节导入配置项。
+  /// 「章节」导入配置项。
   final TitleImportOptions chapterImportOptions;
 
-  ImportOptions(
+  const ImportOptions(
     this.input, {
-    required this.volumeImportOptions,
-    required this.chapterImportOptions,
+    this.volumeImportOptions = const TitleImportOptions(),
+    this.chapterImportOptions = const TitleImportOptions(),
     this.hasBrief = false,
   });
 
   @override
   String toString() {
-    return 'ImportOptions{input: $input, volumeImportOptions: $volumeImportOptions, chapterImportOptions: $chapterImportOptions}';
+    return 'ImportOptions{input: $input, hasBrief: $hasBrief, volumeImportOptions: $volumeImportOptions, chapterImportOptions: $chapterImportOptions}';
   }
 }
 
 /// 标题导入配置项。
 class TitleImportOptions {
   /// 标题的最大长度，超出该长度的字符串不会被判定为标题。
+  /// 默认值：15。
   final int maxLength;
 
   /// 判断标题的正则表达式列表。
+  /// 默认值：[]。
   final List<RegExp> regexes;
 
-  TitleImportOptions({required this.regexes, this.maxLength = 15});
+  const TitleImportOptions({this.regexes = const [], this.maxLength = 15});
 
   @override
   String toString() {
@@ -50,25 +50,19 @@ class TitleImportOptions {
 
 /// 小说导出配置项。
 class ExportOptions {
-  /// 小说导出器。
+  /// 文本输出。
   final AbstractOutput output;
 
-  /// 导出卷格式模板。
-  final TitleTemplate? volumeTemplate;
-
-  /// 导出章节格式模板。
-  final TitleTemplate? chapterTemplate;
-
-  /// 简介缩进格式。
+  /// 「简介」缩进格式。
   final Indentation? briefIndentation;
 
-  /// 卷缩进格式。
-  final Indentation? volumeIndentation;
+  /// 「卷」导出格式。
+  final TitleExportOptions volumeExportOptions;
 
-  /// 章节缩进格式。
-  final Indentation? chapterIndentation;
+  /// 「章节」导出格式。
+  final TitleExportOptions chapterExportOptions;
 
-  /// 段落缩进格式。
+  /// 「段落」缩进格式。
   final Indentation? paragraphIndentation;
 
   /// 段落之间空行数量。
@@ -77,21 +71,26 @@ class ExportOptions {
   /// 文本替换列表。
   final List<Replacement> replacements;
 
-  ExportOptions(
+  const ExportOptions(
     this.output, {
-    this.volumeTemplate,
-    this.chapterTemplate,
     this.briefIndentation,
-    this.volumeIndentation,
-    this.chapterIndentation,
-    this.paragraphIndentation,
+    this.volumeExportOptions = const TitleExportOptions(),
+    this.chapterExportOptions = const TitleExportOptions(),
+    this.paragraphIndentation = const Indentation.defaultChineseIndentation(),
     this.blankLineCount = 0,
     this.replacements = const [],
   });
+}
+
+class TitleExportOptions {
+  final TitleTemplate? template;
+  final Indentation? indentation;
+
+  const TitleExportOptions({this.template, this.indentation});
 
   @override
   String toString() {
-    return 'ExportOptions{output: $output, volumeTemplate: $volumeTemplate, chapterTemplate: $chapterTemplate, volumeIndentation: $volumeIndentation, chapterIndentation: $chapterIndentation, paragraphIndentation: $paragraphIndentation, replcements: $replacements}';
+    return 'TitleExportOptions{template: $template, indentation: $indentation}';
   }
 }
 
@@ -105,12 +104,12 @@ class Indentation {
   /// 缩进字符数量。
   final int count;
 
-  Indentation(int spaceCount, this.chars) : count = max(0, spaceCount);
+  const Indentation(this.count, this.chars);
 
-  Indentation.defaultChineseIndentationOptions() : count = 2, chars = '\u3000';
+  const Indentation.defaultChineseIndentation() : count = 2, chars = '\u3000';
 
   String applyTo(String input) {
-    return '${StrUtil.repeat(chars, count - 1)}$input';
+    return chars * count + input;
   }
 
   @override
@@ -135,7 +134,7 @@ class TitleTemplate {
 
   final String template;
 
-  TitleTemplate(this.template);
+  const TitleTemplate(this.template);
 
   String fill(Title title) {
     return template
