@@ -1,112 +1,152 @@
 import 'dart:io';
 
-import 'package:novel_formatter/novel_formatter.dart';
+import '../novel_formatter.dart';
+import 'logger.dart';
 
 /// 小说格式化处理器。
 ///
 /// 此类负责小说的整个格式化流程，包括：读取、格式化、导出。
 class FormatProcessor {
   /// 小说导入配置项。
-  final ImportOptions importOptions;
+  final ImportOptions _importOptions;
 
   /// 小说导出配置项。
-  final ExportOptions exportOptions;
+  final ExportOptions _exportOptions;
 
-  FormatProcessor(this.importOptions, this.exportOptions);
+  FormatProcessor(this._importOptions, this._exportOptions);
 
-  late AbstractInput input;
-  late AbstractOutput output;
-  late BlankLineParser blankLineParser;
-  late TitleParser volumeParser;
-  late TitleParser chapterParser;
+  late final AbstractInput _input;
+  late final AbstractOutput _output;
 
-  late BriefFormatter briefFormatter;
-  late VolumeFormatter volumeFormatter;
-  late ChapterFormatter chapterFormatter;
-  late ParagraphFormatter paragraphFormatter;
+  late final BlankLineParser _blankLineParser;
+  late final VolumeParser _volumeParser;
+  late final ChapterParser _chapterParser;
+
+  late final BriefFormatter _briefFormatter;
+  late final VolumeFormatter _volumeFormatter;
+  late final ChapterFormatter _chapterFormatter;
+  late final BriefParser _briefParser;
+  late final ParagraphFormatter _paragraphFormatter;
+
+  late final FormatResult _formatResult;
 
   /// 初始化解析器和格式化器。
   void initialize() {
-    input = importOptions.input;
-    output = exportOptions.output;
+    // 初始化输入输出流。
+    _input = _importOptions.input;
+    _output = _exportOptions.output;
+    // 格式化结果初始化。
+    _formatResult = FormatResult();
+    // 解析器初始化。
+    initializeParsers();
+    // 格式器初始化。
+    initializeFormatters();
+  }
 
-    blankLineParser = BlankLineParser();
-    volumeParser = TitleParser(importOptions.volumeImportOptions);
-    chapterParser = TitleParser(importOptions.chapterImportOptions);
+  /// 初始化解析器。
+  void initializeParsers() {
+    _blankLineParser = BlankLineParser();
+    _volumeParser = VolumeParser(_importOptions.volumeImportOptions);
+    _chapterParser = ChapterParser(_importOptions.chapterImportOptions);
+    _briefParser = BriefParser(_importOptions, _formatResult);
+  }
 
-    briefFormatter = BriefFormatter(
-      indentation: exportOptions.briefIndentation,
-      replacements: exportOptions.replacements,
+  /// 初始化格式化器。
+  void initializeFormatters() {
+    _briefFormatter = BriefFormatter(
+      indentation: _exportOptions.briefIndentation,
+      replacements: _exportOptions.replacements,
     );
-    volumeFormatter = VolumeFormatter(
-      template: exportOptions.volumeTemplate,
-      indentation: exportOptions.volumeIndentation,
-      replacements: exportOptions.replacements,
+    _volumeFormatter = VolumeFormatter.fromOptions(
+      options: _exportOptions.volumeExportOptions,
+      replacements: _exportOptions.replacements,
     );
-    chapterFormatter = ChapterFormatter(
-      template: exportOptions.chapterTemplate,
-      indentation: exportOptions.chapterIndentation,
-      replacements: exportOptions.replacements,
+    _chapterFormatter = ChapterFormatter.fromOptions(
+      options: _exportOptions.chapterExportOptions,
+      replacements: _exportOptions.replacements,
     );
-    paragraphFormatter = ParagraphFormatter(
-      indentation: exportOptions.paragraphIndentation,
-      replacements: exportOptions.replacements,
+    _paragraphFormatter = ParagraphFormatter(
+      indentation: _exportOptions.paragraphIndentation,
+      replacements: _exportOptions.replacements,
     );
   }
 
   /// 格式化小说。
   Future<FormatResult> format() async {
-    FormatResult result = FormatResult();
     initialize();
     try {
-      await input.initialize();
-      await output.initialize();
-      await input.traverse((String line) {
+      _input.initialize();
+      _output.initialize();
+      Stream<String> lines = _input.stream;
+      await for (String line in lines) {
         String text = line.trim();
-        if (blankLineParser.tryParse(text) != null) {
-          return;
-        }
-        Title? volume, chapter;
-        String formatText = text;
-        // 解析与格式化
-        if ((volume = volumeParser.tryParse(text)) != null) {
-          formatText = volumeFormatter.format(volume!);
-          result.volumeCount++;
-        } else if ((chapter = chapterParser.tryParse(text)) != null) {
-          formatText = chapterFormatter.format(chapter!);
-          result.chapterCount++;
-        } else if (importOptions.hasBrief &&
-            result.volumeCount == 0 &&
-            result.chapterCount == 0) {
-          // 如果当前文本既不是卷也不是行
-          // 而且：当前小说有简介 && 当前未检测到卷 && 当前未检测到章节
-          // 则认为当前文本为简介
-          formatText = briefFormatter.format(Brief(text));
-        } else {
-          formatText = paragraphFormatter.format(Paragraph(text));
-        }
-        // 输出格式化文本。
-        output.output(formatText + Platform.lineTerminator);
-        // 输出空行。
-        for (int i = 0; i < exportOptions.blankLineCount; i++) {
-          output.output(Platform.lineTerminator);
-        }
-      });
-      await input.destroy();
-      await output.destroy();
-      print('FormatSuccess');
-      return result;
+        // 解析为NovelElement。
+        NovelElement? element = _parseNovelElement(text);
+        // 统计NovelElement信息。
+        _countNovelElement(element);
+        // 格式化NovelElement字符串并输出。
+        String? outputText = _formatNovelElement(element);
+        _outputFormatText(outputText);
+      }
+      _input.destroy();
+      _output.destroy();
+      logger.i('Format success.');
+      return _formatResult;
     } catch (e) {
-      print('Format Failed. $e');
-      result.fail(e);
-      return result;
+      logger.e('Format failed.', error: e);
+      _formatResult.fail(e);
+      return _formatResult;
     }
+  }
+
+  NovelElement? _parseNovelElement(String text) {
+    return _blankLineParser.tryParse(text) ??
+        _volumeParser.tryParse(text) ??
+        _chapterParser.tryParse(text) ??
+        _briefParser.tryParse(text) ??
+        Paragraph(text);
+  }
+
+  void _countNovelElement(NovelElement? element) {
+    switch (element) {
+      case Volume _:
+        _formatResult.volumeCount++;
+      case Chapter _:
+        _formatResult.chapterCount++;
+      default:
+        break;
+    }
+  }
+
+  String? _formatNovelElement(NovelElement? element) {
+    return switch (element) {
+      Brief brief => _briefFormatter.format(brief),
+      Volume volume => _volumeFormatter.format(volume),
+      Chapter chapter => _chapterFormatter.format(chapter),
+      Paragraph paragraph => _paragraphFormatter.format(paragraph),
+      _ => null,
+    };
+  }
+
+  void _outputFormatText(String? text) {
+    if (text == null) {
+      return;
+    }
+    final String lineTerminator = Platform.lineTerminator;
+    // 输出格式化文本 + 换行符。
+    _output.output(text + lineTerminator);
+    // 输出空行。
+    final int blankLineCount = _exportOptions.blankLineCount;
+    if (blankLineCount <= 0) {
+      return;
+    }
+    _output.output(lineTerminator * blankLineCount);
   }
 }
 
 class FormatResult {
   late bool success = true;
-  late Object? exception;
+  Object? exception;
 
   void fail(Object e) {
     success = false;
@@ -115,6 +155,11 @@ class FormatResult {
 
   int volumeCount = 0;
   int chapterCount = 0;
+
+  @override
+  String toString() {
+    return 'FormatResult{success: $success, exception: $exception, volumeCount: $volumeCount, chapterCount: $chapterCount}';
+  }
 }
 
 abstract class AbstractNovelElementFormatter<T extends NovelElement> {
@@ -127,23 +172,23 @@ abstract class AbstractNovelElementFormatter<T extends NovelElement> {
   });
 
   /// 根据不同格式器的规则，各自解析[T]来获取用于后续通用格式化流程的文本。
-  String resolveText(T element);
+  String _resolveText(T brief);
 
-  /// 格式化当前[NovelElement]文本。
+  /// 格式化[T]，返回格式化字符串。
   String format(T element) {
-    String text = resolveText(element);
-    String replaced = replace(text);
+    String text = _resolveText(element);
+    String replaced = _replace(text);
     return indent(replaced);
   }
 
   /// 判断当前格式器是否允许[replacement]替换规则。
-  bool acceptReplacement(Replacement replacement);
+  bool _acceptReplacement(Replacement replacement);
 
   /// 对[input]字符串应用[replacements]替换规则。
-  String replace(String input) {
+  String _replace(String input) {
     String replaced = input;
     for (Replacement r in replacements) {
-      if (acceptReplacement(r)) {
+      if (_acceptReplacement(r)) {
         replaced = r.applyTo(replaced);
       }
     }
@@ -168,10 +213,20 @@ abstract class AbstractTitleFormatter
     super.replacements,
   });
 
+  AbstractTitleFormatter.fromOptions(
+    TitleExportOptions? options,
+    List<Replacement> replacements,
+  ) : this(
+        template: options?.template,
+        indentation: options?.indentation,
+        replacements: replacements,
+      );
+
   /// 使用[template]模板解析[Title]标题。
   /// 如果[template]为`null`则直接返回标题文本。
   @override
-  String resolveText(Title title) {
+  String _resolveText(Title brief) {
+    Title title = brief;
     if (template == null) {
       return title.text;
     }
@@ -180,27 +235,25 @@ abstract class AbstractTitleFormatter
 }
 
 class VolumeFormatter extends AbstractTitleFormatter {
-  VolumeFormatter({
-    required super.template,
-    super.indentation,
-    super.replacements,
-  });
+  VolumeFormatter.fromOptions({
+    TitleExportOptions? options,
+    List<Replacement> replacements = const [],
+  }) : super.fromOptions(options, replacements);
 
   @override
-  bool acceptReplacement(Replacement replacement) {
+  bool _acceptReplacement(Replacement replacement) {
     return replacement.applyToVolume;
   }
 }
 
 class ChapterFormatter extends AbstractTitleFormatter {
-  ChapterFormatter({
-    required super.template,
-    super.indentation,
-    super.replacements,
-  });
+  ChapterFormatter.fromOptions({
+    TitleExportOptions? options,
+    List<Replacement> replacements = const [],
+  }) : super.fromOptions(options, replacements);
 
   @override
-  bool acceptReplacement(Replacement replacement) {
+  bool _acceptReplacement(Replacement replacement) {
     return replacement.applyToVolume;
   }
 }
@@ -209,13 +262,13 @@ class ParagraphFormatter extends AbstractNovelElementFormatter<Paragraph> {
   ParagraphFormatter({super.indentation, super.replacements});
 
   @override
-  bool acceptReplacement(Replacement replacement) {
+  bool _acceptReplacement(Replacement replacement) {
     return replacement.applyToParagraph;
   }
 
   @override
-  String resolveText(Paragraph paragraph) {
-    return paragraph.text;
+  String _resolveText(Paragraph brief) {
+    return brief.text;
   }
 }
 
@@ -223,13 +276,13 @@ class BriefFormatter extends AbstractNovelElementFormatter<Brief> {
   BriefFormatter({super.indentation, super.replacements});
 
   @override
-  bool acceptReplacement(Replacement replacement) {
+  bool _acceptReplacement(Replacement replacement) {
     return replacement.applyToBrief;
   }
 
   @override
-  String resolveText(Brief element) {
-    return element.text;
+  String _resolveText(Brief brief) {
+    return brief.text;
   }
 }
 
