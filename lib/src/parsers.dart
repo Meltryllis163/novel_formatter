@@ -1,5 +1,4 @@
-import 'novel.dart';
-import 'options.dart';
+import '../novel_formatter.dart';
 import 'utils.dart';
 
 abstract class AbstractParser {
@@ -13,23 +12,40 @@ class BlankLineParser extends AbstractParser {
   }
 }
 
-class TitleParser extends AbstractParser {
+class BriefParser extends AbstractParser {
+  final ImportOptions _options;
+  final FormatResult _result;
+
+  BriefParser(this._options, this._result);
+
+  @override
+  Brief? tryParse(String input) {
+    if (_options.hasBrief &&
+        _result.volumeCount == 0 &&
+        _result.chapterCount == 0) {
+      return Brief(input);
+    }
+    return null;
+  }
+}
+
+abstract class TitleParser<T extends Title> extends AbstractParser {
   /// 正则表达式命名分组：标题编号。
   static const String numGroup = 'num';
 
   /// 正则表达式命名分组：标题名。
   static const String nameGroup = 'name';
 
-  TitleImportOptions options;
+  final TitleImportOptions _options;
 
-  TitleParser(this.options);
+  TitleParser(this._options);
 
   @override
-  Title? tryParse(String input) {
-    if (input.length > options.maxLength) {
+  T? tryParse(String input) {
+    if (input.length > _options.maxLength) {
       return null;
     }
-    for (RegExp regex in options.regexes) {
+    for (RegExp regex in _options.regexes) {
       RegExpMatch? match = regex.firstMatch(input);
       if (match != null) {
         String? numGroupStr = match.groupNames.contains(numGroup)
@@ -38,7 +54,7 @@ class TitleParser extends AbstractParser {
         String? nameGroupStr = match.groupNames.contains(nameGroup)
             ? match.namedGroup(nameGroup)
             : null;
-        return Title(
+        return _create(
           input,
           NumberUtil.tryParse(numGroupStr)?.toInt(),
           nameGroupStr,
@@ -47,21 +63,24 @@ class TitleParser extends AbstractParser {
     }
     return null;
   }
+
+  T _create(String text, int? number, String? name);
 }
 
-/// 自用的标题正则解析字符串。
-class TitleRegExp {
-  // 卷正则 ==============================================
-  /// 第一卷 卷名；
-  /// 第1卷 卷名。
-  static final RegExp volume1 = RegExp(
-    '^第(?<${TitleParser.numGroup}>[0-9一二三四五六七八九零十百千万]+)卷[\\s]*(?<${TitleParser.nameGroup}>[\\S]*)\$',
-  );
+class VolumeParser extends TitleParser<Volume> {
+  VolumeParser(super.options);
 
-  // 章节正则 ==============================================
-  /// 第一章 章节名；
-  /// 第1章 章节名。
-  static final RegExp chapter1 = RegExp(
-    '^第(?<${TitleParser.numGroup}>[0-9一二三四五六七八九零十百千万]+)章[\\s]*(?<${TitleParser.nameGroup}>[\\S]*)\$',
-  );
+  @override
+  Volume _create(String text, int? number, String? name) {
+    return Volume(text, number, name);
+  }
+}
+
+class ChapterParser extends TitleParser<Chapter> {
+  ChapterParser(super.options);
+
+  @override
+  Chapter _create(String text, int? number, String? name) {
+    return Chapter(text, number, name);
+  }
 }
