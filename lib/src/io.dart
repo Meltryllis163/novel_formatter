@@ -34,7 +34,7 @@ class FileInput extends AbstractInput {
   @override
   void initialize() {
     if (!file.existsSync()) {
-      throw FileSystemException('FileNotFound');
+      throw FileSystemException('File not found.');
     }
   }
 
