@@ -41,28 +41,37 @@ dependencies:
 ### 代码示例
 
 ```dart
-void format() async {
+void main() {
   // 导入文件的配置项
   ImportOptions importOptions = ImportOptions(
-    FileInput(File(r'ImportFilePath'), utf8),
+    FileInput(File(r'Test.txt'), utf8),
     hasBrief: true,
     volumeImportOptions: TitleImportOptions(regexes: []),
-    chapterImportOptions: TitleImportOptions(regexes: [RegExp(r'RegExpHere')]),
+    chapterImportOptions: TitleImportOptions(
+      regexes: [
+        RegExp(
+          '^第(?<${TitleParser.numGroup}>[0-9一二三四五六七八九零十百千万]+)章[\\s]*(?<${TitleParser
+              .nameGroup}>[\\S]*)\$',
+        ),
+      ],
+    ),
+    paragraphImportOptions: ParagraphImportOptions(resegment: true),
   );
 
   // 导出文件的配置项
   ExportOptions exportOptions = ExportOptions(
-    FileOutput(File(r'ExportFilePath')),
-    chapterTemplate: TitleTemplate(
-      // 占位符详见[TitleTemplate]类。
-      '第${TitleTemplate.num}章 ${TitleTemplate.name}',
+    FileOutput(File(r'Test_export.txt')),
+    chapterExportOptions: TitleExportOptions(
+      template: TitleTemplate(
+        // 占位符详见[TitleTemplate]类。
+        '第${TitleTemplate.num}章 ${TitleTemplate.name}',
+      ),
     ),
     paragraphIndentation: Indentation(2, '\u3000'),
     blankLineCount: 1,
   );
-
   FormatProcessor processor = FormatProcessor(importOptions, exportOptions);
-  await processor.format();
+  processor.format();
 }
 ```
 
@@ -70,14 +79,15 @@ void format() async {
 
 ### ImportOptions
 
-`ImportOptions` 是小说导入的总配置项。
+`ImportOptions`是小说导入的总配置项。
 
-| 配置项                  | 说明                                                                         | 变量类型                                      | 默认值   |
-|----------------------|----------------------------------------------------------------------------|-------------------------------------------|-------|
-| input                | 用于文本的读取。                                                                   | [FileInput](#FileInput)                   | 必选    |
-| volumeImportOptions  | 小说「卷」的导入配置项。                                                               | [TitleImportOptions](#TitleImportOptions) | 必选    |
-| chapterImportOptions | 小说「章节」的导入配配置项。                                                             | [TitleImportOptions](#TitleImportOptions) | 必选    |
-| hasBrief             | 声明小说是否存在「简介」（即在第一卷、第一章之前存在的文本，例如小说名称，作者，下载地址等）。<br />该配置会影响格式化时是否解析「简介」文本。 | bool                                      | false |
+| 配置项                    | 说明                                                                         | 变量类型                                              | 默认值   |
+|------------------------|----------------------------------------------------------------------------|---------------------------------------------------|-------|
+| input                  | 用于文本的读取。                                                                   | [FileInput](#FileInput)                           | 必选    |
+| hasBrief               | 声明小说是否存在「简介」（即在第一卷、第一章之前存在的文本，例如小说名称，作者，下载地址等）。<br />该配置会影响格式化时是否解析「简介」文本。 | bool                                              | false |
+| volumeImportOptions    | 小说「卷」的导入配置项。                                                               | [TitleImportOptions](#TitleImportOptions)         | 必选    |
+| chapterImportOptions   | 小说「章节」的导入配置项。                                                              | [TitleImportOptions](#TitleImportOptions)         | 必选    |
+| paragraphImportOptions | 小说「段落」的导入配置项。                                                              | [ParagraphImportOptions](#ParagraphImportOptions) |       |
 
 #### FileInput
 
@@ -96,7 +106,7 @@ void format() async {
 
 | 配置项       | 说明                                               | 变量类型           | 默认值 |
 |-----------|--------------------------------------------------|----------------|-----|
-| regexes   | 正则表达式列表，详见[正则表达式](#正则表达式)。                       | List\<RegExp\> | 必选  |
+| regexes   | 正则表达式列表，详见[正则表达式](#正则表达式)。                       | List\<RegExp\> | []  |
 | maxLength | 标题的最大长度。<br />超出该长度的文本不会再尝试用正则表达式来解析，而是直接判断为非标题。 | int            | 15  |
 
 ##### 正则表达式
@@ -116,21 +126,28 @@ void format() async {
 正则表达式`^第(?<num>[0-9一二三四五六七八九零十百千万]+)章[\s]*(?<name>[\S]*)$`解析「第一章
 陨落的天才」，解析成功，且捕获到标题编号「一」以及标题名「陨落的天才」。
 
+#### ParagraphImportOptions
+
+`ParagraphImportOptions`是「段落」相关的导入配置项。
+
+| 配置项       | 说明                                                                           | 变量类型 | 默认值   |
+|-----------|------------------------------------------------------------------------------|------|-------|
+| resegment | 是否重新分段。<br />启用该功能后，当文本行不以句号、问号、下引号等标点符号结尾（即不以表示句子结束的标点符号结尾），则会尝试将下一文本行拼接过来。 | bool | false |
+| maxLength | 「段落」重新分段的最大长度。<br />当拼接文本超过该长度以后，将不再继续拼接，而是作为完整段落输出。                         | int  | 500   |
+
 ### ExportOptions
 
 `ExportOptions`是小说导出的总配置项。
 
-| 配置项                  | 说明                      | 变量类型                                | 默认值  |
-|----------------------|-------------------------|-------------------------------------|------|
-| output               | 用于文本的导出。                | [FileOutput](#FileOutput)           | 必选   |
-| volumeTemplate       | 「卷」导出模板，详见右侧变量类型介绍。     | [TitleTemplate](#TitleTemplate)     | null |
-| chapterTemplate      | 「章节」导出模板，详见右侧变量类型介绍。    | [TitleTemplate](#TitleTemplate)     | null |
-| briefIndentation     | 「简介」缩进格式配置项，详见右侧变量类型介绍。 | [Indentation](#Indentation)         | null |
-| volumeIndentation    | 「卷」缩进格式配置项，详见右侧变量类型介绍。  | [Indentation](#Indentation)         | null |
-| chapterIndentation   | 「章节」缩进格式配置项，详见右侧变量类型介绍。 | [Indentation](#Indentation)         | null |
-| paragraphIndentation | 「段落」缩进格式配置项，详见右侧变量类型介绍。 | [Indentation](#Indentation)         | null |
-| blankLineCount       | 空行数量，指文本行之间空几行。         | int                                 | 0    |
-| replacements         | 导出时文本替换配置，详见右侧变量类型。     | List\<[Replacement](#Replacement)\> | []   |
+| 配置项                  | 说明                      | 变量类型                                      | 默认值     |
+|----------------------|-------------------------|-------------------------------------------|---------|
+| output               | 用于文本的导出。                | [FileOutput](#FileOutput)                 | 必选      |
+| briefIndentation     | 「简介」缩进格式配置项，详见右侧变量类型介绍。 | [Indentation](#Indentation)               | null    |
+| volumeExportOptions  | 「卷」导出配置项，详见右侧变量类型介绍。    | [TitleExportOptions](#TitleExportOptions) | 见变量类型介绍 |
+| chapterExportOptions | 「章节」导出配置项，详见右侧变量类型介绍。   | [TitleExportOptions](#TitleExportOptions) | 见变量类型介绍 |
+| paragraphIndentation | 「段落」缩进格式配置项，详见右侧变量类型介绍。 | [Indentation](#Indentation)               | null    |
+| blankLineCount       | 空行数量，指文本行之间空几行。         | int                                       | 0       |
+| replacements         | 导出时替换文本，详见右侧变量类型。       | List\<[Replacement](#Replacement)\>       | []      |
 
 #### FileOutput
 
@@ -139,6 +156,15 @@ void format() async {
 | 配置项  | 说明         | 变量类型 | 默认值 |
 |------|------------|------|-----|
 | file | 用于导出文本的文件。 | File | 必选  |
+
+#### TitleExportOptions
+
+`TitleExportOptions`是「标题」相关的导出的配置项。
+
+| 配置项         | 说明                  | 变量类型                            | 默认值  |
+|-------------|---------------------|---------------------------------|------|
+| template    | 导出模板，详见右侧变量类型介绍。    | [TitleTemplate](#TitleTemplate) | null |
+| indentation | 缩进格式配置项，详见右侧变量类型介绍。 | [Indentation](#Indentation)     | null |
 
 #### TitleTemplate
 
@@ -189,24 +215,24 @@ void format() async {
 
 ### AbstractInput
 
-| 方法                                                    | 说明                                                     |
-|-------------------------------------------------------|--------------------------------------------------------|
-| traverse(void Function(String text) outputFormatted)) | 逐行读取小说文本，传入`outputFormatted`进行格式化与输出。该方法中抛出的异常将被本程序捕获。 |
-| initialize                                            | 初始化，在`traverse`方法前执行，用于输入资源的初始化。该方法中抛出的异常将被本程序捕获。      |
-| destroy                                               | 格式化结束后销毁资源。                                            |
+| 方法         | 说明                                                 |
+|------------|----------------------------------------------------|
+| stream     | 小说文本输入流。该方法中抛出的异常将被本程序捕获。                          |
+| initialize | 初始化，在格式化获取`stream`前执行，用于输入资源的初始化。该方法中抛出的异常将被本程序捕获。 |
+| destroy    | 格式化结束后销毁资源。                                        |
 
 ### AbstractOutput
 
 | 方法                  | 说明                                              |
 |---------------------|-------------------------------------------------|
-| output(String text) | 逐行输出文本至指定位置。                                    |
+| output(String text) | 输出文本至指定位置。                                      |
 | initialize          | 初始化，在`output`方法前执行，用于输出资源的初始化。该方法中抛出的异常将被本程序捕获。 |
 | destroy             | 格式化结束后销毁资源。                                     |
 
 ## 更新日志
 
-详见[CHANGELOG.md](./CHANGELOG.md)
+详见[CHANGELOG.md](./CHANGELOG.md)。
 
 ## TODO
 
-- [ ] 重新分段功能，保证段落以「.」，「。」等表示结束的符号结尾。
+- [x] 重新分段功能，保证段落以「.」，「。」等表示结束的符号结尾。
