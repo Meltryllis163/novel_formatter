@@ -5,6 +5,9 @@ import 'utils.dart';
 
 /// 小说导入配置项。
 class ImportOptions {
+  /// [hasBrief] 默认值。
+  static const bool defaultHasBrief = false;
+
   /// 小说读取器。
   final AbstractInput input;
 
@@ -25,7 +28,7 @@ class ImportOptions {
     this.volumeImportOptions = const TitleImportOptions(),
     this.chapterImportOptions = const TitleImportOptions(),
     this.paragraphImportOptions = const ParagraphImportOptions(),
-    this.hasBrief = false,
+    this.hasBrief = defaultHasBrief,
   });
 
   @override
@@ -36,15 +39,23 @@ class ImportOptions {
 
 /// 标题导入配置项。
 class TitleImportOptions {
+  /// [maxLength] 默认值。
+  static const int defaultMaxLength = 15;
+
   /// 标题的最大长度，超出该长度的字符串不会被判定为标题。
-  /// 默认值：15。
   final int maxLength;
+
+  /// [regexes] 默认值。
+  static const List<RegExp> defaultRegexes = [];
 
   /// 判断标题的正则表达式列表。
   /// 默认值：[]。
   final List<RegExp> regexes;
 
-  const TitleImportOptions({this.regexes = const [], this.maxLength = 15});
+  const TitleImportOptions({
+    this.regexes = defaultRegexes,
+    this.maxLength = defaultMaxLength,
+  });
 
   @override
   String toString() {
@@ -53,13 +64,22 @@ class TitleImportOptions {
 }
 
 class ParagraphImportOptions {
+  /// [resegment] 默认值。
+  static const bool defaultResegment = false;
+
   /// 是否重新分段。
   final bool resegment;
+
+  /// [maxLength] 默认值。
+  static const defaultMaxLength = 500;
 
   /// 段落最大长度，超出该长度的文本将不会再重新分段，而是作为完整段落输出。
   final int maxLength;
 
-  const ParagraphImportOptions({this.resegment = false, this.maxLength = 500});
+  const ParagraphImportOptions({
+    this.resegment = defaultResegment,
+    this.maxLength = defaultMaxLength,
+  });
 }
 
 /// 小说导出配置项。
@@ -76,11 +96,20 @@ class ExportOptions {
   /// 「章节」导出格式。
   final TitleExportOptions chapterExportOptions;
 
+  static const Indentation defaultParagraphIndentation =
+      Indentation.defaultChineseIndentation();
+
   /// 「段落」缩进格式。
   final Indentation? paragraphIndentation;
 
+  /// [blankLineCount] 默认值。
+  static const int defaultBlankLineCount = 0;
+
   /// 段落之间空行数量。
   final int blankLineCount;
+
+  /// [replacements] 默认值。
+  static const List<Replacement> defaultReplacements = [];
 
   /// 文本替换列表。
   final List<Replacement> replacements;
@@ -90,9 +119,9 @@ class ExportOptions {
     this.briefIndentation,
     this.volumeExportOptions = const TitleExportOptions(),
     this.chapterExportOptions = const TitleExportOptions(),
-    this.paragraphIndentation = const Indentation.defaultChineseIndentation(),
-    this.blankLineCount = 0,
-    this.replacements = const [],
+    this.paragraphIndentation = defaultParagraphIndentation,
+    this.blankLineCount = defaultBlankLineCount,
+    this.replacements = defaultReplacements,
   });
 }
 
