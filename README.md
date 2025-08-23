@@ -41,13 +41,16 @@ dependencies:
 ### 代码示例
 
 ```dart
-void main() {
+void format() {
   // 导入文件的配置项
-  ImportOptions importOptions = ImportOptions(
-    FileInput(File(r'Test.txt'), utf8),
+  SourceOptions sourceOptions = SourceOptions(
+    FileNovelReader(
+      File(r'D:\Source.txt'),
+      utf8,
+    ),
     hasBrief: true,
-    volumeImportOptions: TitleImportOptions(regexes: []),
-    chapterImportOptions: TitleImportOptions(
+    volumeSource: TitleSource(regexes: []),
+    chapterSource: TitleSource(
       regexes: [
         RegExp(
           '^第(?<${TitleParser.numGroup}>[0-9一二三四五六七八九零十百千万]+)章[\\s]*(?<${TitleParser
@@ -55,13 +58,15 @@ void main() {
         ),
       ],
     ),
-    paragraphImportOptions: ParagraphImportOptions(resegment: true),
+    paragraphSource: ParagraphSource(resegment: true),
   );
 
   // 导出文件的配置项
   ExportOptions exportOptions = ExportOptions(
-    FileOutput(File(r'Test_export.txt')),
-    chapterExportOptions: TitleExportOptions(
+    FileNovelWriter(
+      File(r'D:\Export.txt'),
+    ),
+    chapterExport: TitleExport(
       template: TitleTemplate(
         // 占位符详见[TitleTemplate]类。
         '第${TitleTemplate.num}章 ${TitleTemplate.name}',
@@ -70,37 +75,39 @@ void main() {
     paragraphIndentation: Indentation(2, '\u3000'),
     blankLineCount: 1,
   );
-  FormatProcessor processor = FormatProcessor(importOptions, exportOptions);
-  processor.format();
+  FormatProcessor processor = FormatProcessor(sourceOptions, exportOptions);
+  processor.format().then((result) {
+    logger.d(result);
+  });
 }
 ```
 
 ## 配置项说明
 
-### ImportOptions
+### SourceOptions
 
-`ImportOptions`是小说导入的总配置项。
+`SourceOptions`是小说导入的总配置项。
 
-| 配置项                    | 说明                                                                         | 变量类型                                              | 默认值   |
-|------------------------|----------------------------------------------------------------------------|---------------------------------------------------|-------|
-| input                  | 用于文本的读取。                                                                   | [FileInput](#FileInput)                           | 必选    |
-| hasBrief               | 声明小说是否存在「简介」（即在第一卷、第一章之前存在的文本，例如小说名称，作者，下载地址等）。<br />该配置会影响格式化时是否解析「简介」文本。 | bool                                              | false |
-| volumeImportOptions    | 小说「卷」的导入配置项。                                                               | [TitleImportOptions](#TitleImportOptions)         | 必选    |
-| chapterImportOptions   | 小说「章节」的导入配置项。                                                              | [TitleImportOptions](#TitleImportOptions)         | 必选    |
-| paragraphImportOptions | 小说「段落」的导入配置项。                                                              | [ParagraphImportOptions](#ParagraphImportOptions) |       |
+| 配置项             | 说明                                                                         | 变量类型                                | 默认值   |
+|-----------------|----------------------------------------------------------------------------|-------------------------------------|-------|
+| reader          | 用于文本的读取。                                                                   | [FileNovelReader](#FileNovelReader) | 必选    |
+| hasBrief        | 声明小说是否存在「简介」（即在第一卷、第一章之前存在的文本，例如小说名称，作者，下载地址等）。<br />该配置会影响格式化时是否解析「简介」文本。 | bool                                | false |
+| volumeSource    | 小说「卷」的导入配置项。                                                               | [TitleSource](#TitleSource)         | 必选    |
+| chapterSource   | 小说「章节」的导入配置项。                                                              | [TitleSource](#TitleSource)         | 必选    |
+| paragraphSource | 小说「段落」的导入配置项。                                                              | [ParagraphSource](#ParagraphSource) |       |
 
-#### FileInput
+#### FileNovelReader
 
-`FileInput`用于从文件读取文本。
+`FileNovelReader`用于从文件读取文本。
 
 | 配置项      | 说明         | 变量类型     | 默认值 |
 |----------|------------|----------|-----|
 | file     | 用于读入文本的文件。 | File     | 必选  |
 | encoding | 文件编码。      | Encoding | 必选  |
 
-#### TitleImportOptions
+#### TitleSource
 
-`TitleImportOptions`是「标题」相关的导入配置项。
+`TitleSource`是「标题」相关的导入配置项。
 
 「标题」主要是指「卷标题」和「章节标题」。
 
@@ -126,9 +133,9 @@ void main() {
 正则表达式`^第(?<num>[0-9一二三四五六七八九零十百千万]+)章[\s]*(?<name>[\S]*)$`解析「第一章
 陨落的天才」，解析成功，且捕获到标题编号「一」以及标题名「陨落的天才」。
 
-#### ParagraphImportOptions
+#### ParagraphSource
 
-`ParagraphImportOptions`是「段落」相关的导入配置项。
+`ParagraphSource`是「段落」相关的导入配置项。
 
 | 配置项       | 说明                                                                           | 变量类型 | 默认值   |
 |-----------|------------------------------------------------------------------------------|------|-------|
@@ -139,27 +146,27 @@ void main() {
 
 `ExportOptions`是小说导出的总配置项。
 
-| 配置项                  | 说明                      | 变量类型                                      | 默认值     |
-|----------------------|-------------------------|-------------------------------------------|---------|
-| output               | 用于文本的导出。                | [FileOutput](#FileOutput)                 | 必选      |
-| briefIndentation     | 「简介」缩进格式配置项，详见右侧变量类型介绍。 | [Indentation](#Indentation)               | null    |
-| volumeExportOptions  | 「卷」导出配置项，详见右侧变量类型介绍。    | [TitleExportOptions](#TitleExportOptions) | 见变量类型介绍 |
-| chapterExportOptions | 「章节」导出配置项，详见右侧变量类型介绍。   | [TitleExportOptions](#TitleExportOptions) | 见变量类型介绍 |
-| paragraphIndentation | 「段落」缩进格式配置项，详见右侧变量类型介绍。 | [Indentation](#Indentation)               | null    |
-| blankLineCount       | 空行数量，指文本行之间空几行。         | int                                       | 0       |
-| replacements         | 导出时替换文本，详见右侧变量类型。       | List\<[Replacement](#Replacement)\>       | []      |
+| 配置项                  | 说明                      | 变量类型                                | 默认值     |
+|----------------------|-------------------------|-------------------------------------|---------|
+| writer               | 用于文本的导出。                | [FileNovelWriter](#FileNovelWriter) | 必选      |
+| briefIndentation     | 「简介」缩进格式配置项，详见右侧变量类型介绍。 | [Indentation](#Indentation)         | null    |
+| volumeExport         | 「卷」导出配置项，详见右侧变量类型介绍。    | [TitleExport](#TitleExport)         | 见变量类型介绍 |
+| chapterExport        | 「章节」导出配置项，详见右侧变量类型介绍。   | [TitleExport](#TitleExport)         | 见变量类型介绍 |
+| paragraphIndentation | 「段落」缩进格式配置项，详见右侧变量类型介绍。 | [Indentation](#Indentation)         | null    |
+| blankLineCount       | 空行数量，指文本行之间空几行。         | int                                 | 0       |
+| replacements         | 导出时替换文本，详见右侧变量类型。       | List\<[Replacement](#Replacement)\> | []      |
 
-#### FileOutput
+#### FileNovelWriter
 
-`FileOutput`用于将格式化完成的文本导出至文件。
+`FileNovelWriter`用于将格式化完成的文本导出至文件。
 
 | 配置项  | 说明         | 变量类型 | 默认值 |
 |------|------------|------|-----|
 | file | 用于导出文本的文件。 | File | 必选  |
 
-#### TitleExportOptions
+#### TitleExport
 
-`TitleExportOptions`是「标题」相关的导出的配置项。
+`TitleExport`是「标题」相关的导出的配置项。
 
 | 配置项         | 说明                  | 变量类型                            | 默认值  |
 |-------------|---------------------|---------------------------------|------|
@@ -211,9 +218,9 @@ void main() {
 
 ## 自定义输入输出
 
-本程序的输出输出继承自`AbstractInput`和`AbstractOutput`两个抽象类。
+本程序的输出输出继承自`AbstractNovelReader`和`AbstractNovelWriter`两个抽象类。
 
-### AbstractInput
+### AbstractNovelReader
 
 | 方法         | 说明                                                 |
 |------------|----------------------------------------------------|
@@ -221,7 +228,7 @@ void main() {
 | initialize | 初始化，在格式化获取`stream`前执行，用于输入资源的初始化。该方法中抛出的异常将被本程序捕获。 |
 | destroy    | 格式化结束后销毁资源。                                        |
 
-### AbstractOutput
+### AbstractNovelWriter
 
 | 方法                  | 说明                                              |
 |---------------------|-------------------------------------------------|
