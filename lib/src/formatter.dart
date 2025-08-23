@@ -8,15 +8,15 @@ import 'logger.dart';
 /// 此类负责小说的整个格式化流程，包括：读取、格式化、导出。
 class FormatProcessor {
   /// 小说导入配置项。
-  final ImportOptions _importOptions;
+  final SourceOptions _sourceOptions;
 
   /// 小说导出配置项。
   final ExportOptions _exportOptions;
 
-  FormatProcessor(this._importOptions, this._exportOptions);
+  FormatProcessor(this._sourceOptions, this._exportOptions);
 
-  late final AbstractInput _input;
-  late final AbstractOutput _output;
+  late final AbstractNovelReader _reader;
+  late final AbstractNovelWriter _writer;
 
   late final BlankLineParser _blankLineParser;
   late final VolumeParser _volumeParser;
@@ -34,8 +34,8 @@ class FormatProcessor {
   /// 初始化解析器和格式化器。
   void initialize() {
     // 初始化输入输出流。
-    _input = _importOptions.input;
-    _output = _exportOptions.output;
+    _reader = _sourceOptions.reader;
+    _writer = _exportOptions.writer;
     // 格式化结果初始化。
     _formatResult = FormatResult();
     // 解析器初始化。
@@ -47,10 +47,10 @@ class FormatProcessor {
   /// 初始化解析器。
   void initializeParsers() {
     _blankLineParser = BlankLineParser();
-    _volumeParser = VolumeParser(_importOptions.volumeImportOptions);
-    _chapterParser = ChapterParser(_importOptions.chapterImportOptions);
-    _briefParser = BriefParser(_importOptions, _formatResult);
-    _paragraphParser = ParagraphParser(_importOptions.paragraphImportOptions);
+    _volumeParser = VolumeParser(_sourceOptions.volumeSource);
+    _chapterParser = ChapterParser(_sourceOptions.chapterSource);
+    _briefParser = BriefParser(_sourceOptions, _formatResult);
+    _paragraphParser = ParagraphParser(_sourceOptions.paragraphSource);
   }
 
   /// 初始化格式化器。
@@ -60,11 +60,11 @@ class FormatProcessor {
       replacements: _exportOptions.replacements,
     );
     _volumeFormatter = VolumeFormatter.fromOptions(
-      options: _exportOptions.volumeExportOptions,
+      options: _exportOptions.volumeExport,
       replacements: _exportOptions.replacements,
     );
     _chapterFormatter = ChapterFormatter.fromOptions(
-      options: _exportOptions.chapterExportOptions,
+      options: _exportOptions.chapterExport,
       replacements: _exportOptions.replacements,
     );
     _paragraphFormatter = ParagraphFormatter(
@@ -77,9 +77,9 @@ class FormatProcessor {
   Future<FormatResult> format() async {
     initialize();
     try {
-      _input.initialize();
-      _output.initialize();
-      Stream<String> lines = _input.stream;
+      _reader.initialize();
+      _writer.initialize();
+      Stream<String> lines = _reader.stream;
       await for (String line in lines) {
         String text = line.trim();
         // 解析为NovelElement。
@@ -92,8 +92,8 @@ class FormatProcessor {
       }
       // 处理剩余段落文本。
       _flushPendingParagraph();
-      _input.destroy();
-      _output.destroy();
+      _reader.destroy();
+      _writer.destroy();
       logger.i('Format success.');
       return _formatResult;
     } catch (e) {
@@ -138,13 +138,13 @@ class FormatProcessor {
     }
     final String lineTerminator = Platform.lineTerminator;
     // 输出格式化文本 + 换行符。
-    _output.output(text + lineTerminator);
+    _writer.output(text + lineTerminator);
     // 输出空行。
     final int blankLineCount = _exportOptions.blankLineCount;
     if (blankLineCount <= 0) {
       return;
     }
-    _output.output(lineTerminator * blankLineCount);
+    _writer.output(lineTerminator * blankLineCount);
   }
 
   /// 输出[_paragraphParser]中的剩余文本。
@@ -228,8 +228,7 @@ abstract class AbstractTitleFormatter
     super.replacements,
   });
 
-  AbstractTitleFormatter.fromOptions(
-    TitleExportOptions? options,
+  AbstractTitleFormatter.fromOptions(TitleExport? options,
     List<Replacement> replacements,
   ) : this(
         template: options?.template,
@@ -250,7 +249,7 @@ abstract class AbstractTitleFormatter
 
 class VolumeFormatter extends AbstractTitleFormatter {
   VolumeFormatter.fromOptions({
-    TitleExportOptions? options,
+    TitleExport? options,
     List<Replacement> replacements = const [],
   }) : super.fromOptions(options, replacements);
 
@@ -262,7 +261,7 @@ class VolumeFormatter extends AbstractTitleFormatter {
 
 class ChapterFormatter extends AbstractTitleFormatter {
   ChapterFormatter.fromOptions({
-    TitleExportOptions? options,
+    TitleExport? options,
     List<Replacement> replacements = const [],
   }) : super.fromOptions(options, replacements);
 

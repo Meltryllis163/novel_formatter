@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:novel_formatter/src/utils.dart';
 
-/// 文本输入。
+/// 文本读取。
 /// 将小说文本生成[stream]输入流，用于格式化与导出。
-abstract class AbstractInput {
+abstract class AbstractNovelReader {
   /// 遍历所有输入文本，依次使用[outputFormatted]格式化并输出。
   Stream<String> get stream;
 
@@ -17,11 +17,11 @@ abstract class AbstractInput {
   void destroy();
 }
 
-class FileInput extends AbstractInput {
+class FileNovelReader extends AbstractNovelReader {
   final File file;
   final Encoding encoding;
 
-  FileInput(this.file, this.encoding);
+  FileNovelReader(this.file, this.encoding);
 
   @override
   Stream<String> get stream {
@@ -44,7 +44,7 @@ class FileInput extends AbstractInput {
 
 /// 文本输出。
 /// 将字符串输出到指定位置。
-abstract class AbstractOutput {
+abstract class AbstractNovelWriter {
   /// 输出文本[text]。
   void output(String text);
 
@@ -58,12 +58,12 @@ abstract class AbstractOutput {
 
 /// 文件输出。
 /// 将字符串输出到文件。
-class FileOutput extends AbstractOutput {
+class FileNovelWriter extends AbstractNovelWriter {
   /// 输出文件位置。
   final File file;
   late final IOSink sink;
 
-  FileOutput(this.file);
+  FileNovelWriter(this.file);
 
   @override
   void output(String text) {

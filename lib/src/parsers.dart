@@ -13,7 +13,7 @@ class BlankLineParser extends AbstractParser {
 }
 
 class BriefParser extends AbstractParser {
-  final ImportOptions _options;
+  final SourceOptions _options;
   final FormatResult _result;
 
   BriefParser(this._options, this._result);
@@ -36,7 +36,7 @@ abstract class TitleParser<T extends Title> extends AbstractParser {
   /// 正则表达式命名分组：标题名。
   static const String nameGroup = 'name';
 
-  final TitleImportOptions _options;
+  final TitleSource _options;
 
   TitleParser(this._options);
 
@@ -86,7 +86,7 @@ class ChapterParser extends TitleParser<Chapter> {
 }
 
 class ParagraphParser extends AbstractParser {
-  final ParagraphImportOptions _options;
+  final ParagraphSource _options;
   final StringBuffer _buffer = StringBuffer();
 
   ParagraphParser(this._options);
@@ -118,23 +118,6 @@ class ParagraphParser extends AbstractParser {
       return null;
     }
   }
-}
-
-/// 自用的标题正则解析字符串。
-class TitleRegExp {
-  // 卷正则 ==============================================
-  /// 第一卷 卷名；
-  /// 第1卷 卷名。
-  static final RegExp v1 = RegExp(
-    '^第(?<${TitleParser.numGroup}>[0-9一二三四五六七八九零十百千万]+)卷[\\s]*(?<${TitleParser.nameGroup}>[\\S]*)\$',
-  );
-
-  // 章节正则 ==============================================
-  /// 第一章 章节名；
-  /// 第1章 章节名。
-  static final RegExp c1 = RegExp(
-    '^第(?<${TitleParser.numGroup}>[0-9一二三四五六七八九零十百千万]+)章[\\s]*(?<${TitleParser.nameGroup}>[\\S]*)\$',
-  );
 }
 
 /// 标点符号工具类，包含常用的中文和英文标点符号。

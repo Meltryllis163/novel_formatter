@@ -3,42 +3,37 @@ import 'package:chinese_number/chinese_number.dart';
 import '../novel_formatter.dart';
 import 'utils.dart';
 
-/// 小说导入配置项。
-class ImportOptions {
+/// 源小说配置项。
+class SourceOptions {
   /// [hasBrief] 默认值。
   static const bool defaultHasBrief = false;
 
   /// 小说读取器。
-  final AbstractInput input;
+  final AbstractNovelReader reader;
 
   /// 是否有「简介」。
   final bool hasBrief;
 
   /// 「卷」导入配置项。
-  final TitleImportOptions volumeImportOptions;
+  final TitleSource volumeSource;
 
   /// 「章节」导入配置项。
-  final TitleImportOptions chapterImportOptions;
+  final TitleSource chapterSource;
 
   /// 「段落」导入配置项。
-  final ParagraphImportOptions paragraphImportOptions;
+  final ParagraphSource paragraphSource;
 
-  const ImportOptions(
-    this.input, {
-    this.volumeImportOptions = const TitleImportOptions(),
-    this.chapterImportOptions = const TitleImportOptions(),
-    this.paragraphImportOptions = const ParagraphImportOptions(),
+  SourceOptions(
+    this.reader, {
+    this.volumeSource = const TitleSource(),
+    this.chapterSource = const TitleSource(),
+    this.paragraphSource = const ParagraphSource(),
     this.hasBrief = defaultHasBrief,
   });
-
-  @override
-  String toString() {
-    return 'ImportOptions{input: $input, hasBrief: $hasBrief, volumeImportOptions: $volumeImportOptions, chapterImportOptions: $chapterImportOptions, paragraphImportOptions: $paragraphImportOptions}';
-  }
 }
 
 /// 标题导入配置项。
-class TitleImportOptions {
+class TitleSource {
   /// [maxLength] 默认值。
   static const int defaultMaxLength = 15;
 
@@ -52,18 +47,13 @@ class TitleImportOptions {
   /// 默认值：[]。
   final List<RegExp> regexes;
 
-  const TitleImportOptions({
+  const TitleSource({
     this.regexes = defaultRegexes,
     this.maxLength = defaultMaxLength,
   });
-
-  @override
-  String toString() {
-    return 'TitleImportOptions:{ maxLength: $maxLength, regexes: $regexes }';
-  }
 }
 
-class ParagraphImportOptions {
+class ParagraphSource {
   /// [resegment] 默认值。
   static const bool defaultResegment = false;
 
@@ -76,7 +66,7 @@ class ParagraphImportOptions {
   /// 段落最大长度，超出该长度的文本将不会再重新分段，而是作为完整段落输出。
   final int maxLength;
 
-  const ParagraphImportOptions({
+  const ParagraphSource({
     this.resegment = defaultResegment,
     this.maxLength = defaultMaxLength,
   });
@@ -85,16 +75,16 @@ class ParagraphImportOptions {
 /// 小说导出配置项。
 class ExportOptions {
   /// 文本输出。
-  final AbstractOutput output;
+  final AbstractNovelWriter writer;
 
   /// 「简介」缩进格式。
   final Indentation? briefIndentation;
 
   /// 「卷」导出格式。
-  final TitleExportOptions volumeExportOptions;
+  final TitleExport volumeExport;
 
   /// 「章节」导出格式。
-  final TitleExportOptions chapterExportOptions;
+  final TitleExport chapterExport;
 
   static const Indentation defaultParagraphIndentation =
       Indentation.defaultChineseIndentation();
@@ -114,27 +104,21 @@ class ExportOptions {
   /// 文本替换列表。
   final List<Replacement> replacements;
 
-  const ExportOptions(
-    this.output, {
+  const ExportOptions(this.writer, {
     this.briefIndentation,
-    this.volumeExportOptions = const TitleExportOptions(),
-    this.chapterExportOptions = const TitleExportOptions(),
+    this.volumeExport = const TitleExport(),
+    this.chapterExport = const TitleExport(),
     this.paragraphIndentation = defaultParagraphIndentation,
     this.blankLineCount = defaultBlankLineCount,
     this.replacements = defaultReplacements,
   });
 }
 
-class TitleExportOptions {
+class TitleExport {
   final TitleTemplate? template;
   final Indentation? indentation;
 
-  const TitleExportOptions({this.template, this.indentation});
-
-  @override
-  String toString() {
-    return 'TitleExportOptions{template: $template, indentation: $indentation}';
-  }
+  const TitleExport({this.template, this.indentation});
 }
 
 /// 缩进。
@@ -153,11 +137,6 @@ class Indentation {
 
   String applyTo(String input) {
     return chars * count + input;
-  }
-
-  @override
-  String toString() {
-    return 'Indentation{chars: $chars, count: $count}';
   }
 }
 
@@ -187,10 +166,5 @@ class TitleTemplate {
         )
         .replaceAll(TitleTemplate.num, title.number.toString())
         .replaceAll(TitleTemplate.name, title.name ?? StrUtil.empty);
-  }
-
-  @override
-  String toString() {
-    return 'TitleTemplate{template: $template}';
   }
 }
